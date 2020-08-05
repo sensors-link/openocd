@@ -2304,6 +2304,77 @@ static int arch_state(struct target *target)
 	return ERROR_OK;
 }
 
+// use riscv_try_write_memory as a special process for phoenix MCU
+// try to write memory only, without retry
+int riscv_try_write_memory(struct target *target, target_addr_t address,
+							 uint32_t size, uint32_t count, const uint8_t *buffer)
+{
+	jtag_add_ir_scan(target->tap, &select_dbus, TAP_IDLE);
+
+	/* Set up the address. */
+	cache_set_store(target, 0, T0, SLOT1);
+	cache_set_load(target, 1, T0, SLOT0);
+	cache_set_jump(target, 2);
+	cache_set(target, SLOT0, address);
+	if (cache_write(target, 5, true) != ERROR_OK)
+		return ERROR_FAIL;
+
+	uint64_t t0 = cache_get(target, SLOT1);
+	LOG_DEBUG("t0 is 0x%" PRIx64, t0);
+
+	if (setup_write_memory(target, size) != ERROR_OK)
+		return ERROR_FAIL;
+
+	scans_t *scans = scans_new(target, 2);
+
+	scans_reset(scans);
+
+	if (count > 1)
+	{
+		LOG_ERROR("try_write_memory only support write 1 byte/word/dword! (count must be 1)");
+		goto error;
+	}
+
+	uint32_t value;
+	uint32_t offset = 0;
+	switch (size)
+	{
+	case 1:
+		value = buffer[offset];
+		break;
+	case 2:
+		value = buffer[offset] |
+				(buffer[offset + 1] << 8);
+		break;
+	case 4:
+		value = buffer[offset] |
+				((uint32_t)buffer[offset + 1] << 8) |
+				((uint32_t)buffer[offset + 2] << 16) |
+				((uint32_t)buffer[offset + 3] << 24);
+		break;
+	default:
+		goto error;
+	}
+
+	scans_add_write32(scans, 4, value, true);
+
+	int retval = scans_execute(scans);
+	if (retval != ERROR_OK)
+	{
+		LOG_ERROR("JTAG execute failed: %d", retval);
+		goto error;
+	}
+
+	scans_delete(scans);
+	cache_clean(target);
+	return register_write(target, T0, t0);
+
+error:
+	scans_delete(scans);
+	cache_clean(target);
+	return ERROR_FAIL;
+}
+
 struct target_type riscv011_target = {
 	.name = "riscv",
 

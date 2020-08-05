@@ -60,6 +60,7 @@ extern const struct flash_driver nrf5_flash;
 extern const struct flash_driver nrf51_flash;
 extern const struct flash_driver numicro_flash;
 extern const struct flash_driver ocl_flash;
+extern const struct flash_driver phoenix_flash;
 extern const struct flash_driver pic32mx_flash;
 extern const struct flash_driver psoc4_flash;
 extern const struct flash_driver psoc5lp_flash;
