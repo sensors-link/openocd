@@ -65,12 +65,14 @@ static uint32_t efc_general_op(struct flash_bank *bank, uint32_t op, int offset,
 
 	// Reset STS
 	target_write_u32(bank->target, EFC_STS, 0xff);
-
+	
+	// Set STS operation
 	target_write_u32(bank->target, EFC_OPR, 0x00 + op);
 	target_write_u32(bank->target, EFC_OPR, 0x70 + op);
 	target_write_u32(bank->target, EFC_OPR, 0x90 + op);
 	target_write_u32(bank->target, EFC_OPR, 0xC0 + op);
 
+	//load data to specific flash address
 	riscv_try_write_memory(bank->target, FLASH_BASE + offset, size, 1, (uint8_t *)&value);
 
 	target_read_u32(bank->target, EFC_STS, &sts);
@@ -119,7 +121,7 @@ static int phnx_probe(struct flash_bank *bank)
 	else if (bank->base == EEPROM_BASE)
 	{
 		flash_kb = 1, ram_kb = 10;
-		chip->sector_size = chip->page_size = 2;
+		chip->sector_size = chip->page_size = 4;
 	}
 
 	chip->num_pages = flash_kb * 1024 / chip->sector_size;
@@ -159,7 +161,8 @@ static int phnx_erase(struct flash_bank *bank, int first_sect, int last_sect)
 
 		return ERROR_TARGET_NOT_HALTED;
 	}
-
+	
+	// Check the chip is probed or not
 	if (!chip->probed)
 	{
 		if (phnx_probe(bank) != ERROR_OK)
@@ -197,17 +200,21 @@ static int phnx_write(struct flash_bank *bank, const uint8_t *buffer,
 	}
 
 	uint32_t total = count;
-	int start_sector = offset / chip->sector_size;
-	int start_sector_offset = offset % chip->sector_size;
+	int start_sector = offset / chip->sector_size;//start sector when writing flash
+	int start_sector_offset = offset % chip->sector_size;//the start offset address
+	
+	/* When the offset address is not zero, loading data to flash offset address */
 	if (start_sector_offset != 0)
 	{
 		if (1 != efc_load_page(bank, start_sector * chip->sector_size))
 			return ERROR_FAIL;
 		target_write_buffer(bank->target, PAGEBUF_BASE + start_sector_offset,
 							MIN((int)count, chip->sector_size - start_sector_offset), buffer);
+		/* Erase specific sector before loading data */
 		if (1 != efc_erase_page(bank, start_sector * chip->sector_size))
 			return ERROR_FAIL;
-		if (1 != efc_program_row(bank, start_sector * chip->sector_size))
+		/* Loading sector size data to flash */
+		if (1 != efc_program_row(bank, start_sector * chip->sector_size))//there need 2 times loading data to specific flash address
 			return ERROR_FAIL;
 		if (1 != efc_program_row(bank, start_sector * chip->sector_size + chip->sector_size / 2))
 			return ERROR_FAIL;
@@ -215,8 +222,9 @@ static int phnx_write(struct flash_bank *bank, const uint8_t *buffer,
 		buffer += start_sector_offset;
 		offset += start_sector_offset;
 	}
-
-	while ((int)count >= chip->sector_size)
+	
+	/* When data size is greater than or equal 1 sector */
+	while ((int)count >= chip->sector_size)//loading data to flash sector by sector
 	{
 		if (1 != efc_erase_page(bank, offset))
 			return ERROR_FAIL;
@@ -233,7 +241,7 @@ static int phnx_write(struct flash_bank *bank, const uint8_t *buffer,
 			LOG_INFO(" ... %d%%", percentage);
 		}
 	}
-
+	/* When the rest data is less than 1 sector */
 	if (count > 0)
 	{
 		if (1 != efc_load_page(bank, offset))
