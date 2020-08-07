@@ -3,10 +3,11 @@
 export SYSROOT=/opt/winroot
 export PKG_CONFIG=x86_64-w64-mingw32-pkg-config
 export PKG_CONFIG_PATH=$SYSROOT/lib/pkgconfig
+export PKG_CONFIG_LIBDIR=$SYSROOT/lib/pkgconfig
 
 sudo apt install binutils-mingw-w64-x86-64 g++-mingw-w64-x86-64 gcc-mingw-w64-base gcc-mingw-w64-x86-64 \
 	gfortran-mingw-w64-x86-64 mingw-w64-common mingw-w64-x86-64-dev gdb-mingw-w64 gdb-mingw-w64-target \
-	pkg-config mingw-w64-tools autotools-dev automake autoconf m4 libtool texinfo unzip
+	pkg-config mingw-w64-tools autotools-dev automake autoconf m4 libtool texinfo unzip cmake zip
 	
 # libusb Download & Build
 if [ ! -f $SYSROOT/bin/libusb-1.0.dll ]; then
@@ -58,7 +59,7 @@ if [ ! -f $SYSROOT/bin/libhidapi-0.dll ]; then
 		wget https://github.com/libusb/hidapi/archive/hidapi-0.9.0.tar.gz
 	fi
 	tar zxvf hidapi-0.9.0.tar.gz
-	cd hidapi-0.9.0
+	cd hidapi-hidapi-0.9.0
 	./bootstrap
 	./configure --host=x86_64-w64-mingw32 --prefix=$SYSROOT
 	make -j4 && make install
@@ -87,6 +88,8 @@ if [ ! -f $SYSROOT/bin/libjaylink-0.dll ]; then
 	unzip openocd-0.10.0.zip
 	cd openocd-0.10.0/src/jtag/drivers/libjaylink
 	./configure --host=x86_64-w64-mingw32 --prefix=$SYSROOT
+	# fix __USE_MINGW_ANSI_STDIO bug
+	perl -p -i -e 's/on MinGW\. \*\//on MinGW\. \*\/ #undef __USE_MINGW_ANSI_STDIO/' config.h
 	make -j4 && make install
 	cd ../../../../..
 	rm -fr openocd-0.10.0
