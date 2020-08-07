@@ -8,7 +8,9 @@ export PKG_CONFIG_LIBDIR=$SYSROOT/lib/pkgconfig
 sudo apt install binutils-mingw-w64-x86-64 g++-mingw-w64-x86-64 gcc-mingw-w64-base gcc-mingw-w64-x86-64 \
 	gfortran-mingw-w64-x86-64 mingw-w64-common mingw-w64-x86-64-dev gdb-mingw-w64 gdb-mingw-w64-target \
 	pkg-config mingw-w64-tools autotools-dev automake autoconf m4 libtool texinfo unzip cmake zip
-	
+
+mv guess-rev.sh  guess.sh
+
 # libusb Download & Build
 if [ ! -f $SYSROOT/bin/libusb-1.0.dll ]; then
 	if [ ! -f libusb-1.0.23.tar.bz2 ]; then
@@ -102,6 +104,8 @@ if [ ! -f $SYSROOT/bin/openocd.exe ]; then
 	make -j4 && make install
 	cd ..
 fi
+
+mv guess.sh  guess-rev.sh
 
 cdir=`pwd`
 cd $SYSROOT
