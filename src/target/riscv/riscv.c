@@ -1102,11 +1102,20 @@ static int riscv_run_algorithm(struct target *target, int num_mem_params,
 		return ERROR_FAIL;
 
 	for (int i = 0; i < num_reg_params; i++) {
-		LOG_DEBUG("restore %s", reg_params[i].reg_name);
-		struct reg *r = register_get_by_name(target->reg_cache, reg_params[i].reg_name, 0);
-		buf_set_u64(buf, 0, info->xlen[0], saved_regs[r->number]);
-		if (r->type->set(r, buf) != ERROR_OK)
-			return ERROR_FAIL;
+		if (reg_params[i].direction == PARAM_IN || reg_params[i].direction == PARAM_IN_OUT ) {
+			struct reg *r = register_get_by_name(target->reg_cache, reg_params[i].reg_name, 0);
+			if (r->type->get(r) != ERROR_OK)
+				return ERROR_FAIL;
+			buf_set_u32(reg_params[i].value, 0, info->xlen[0], (uint32_t) buf_get_u64(r->value, 0, r->size));
+		}
+		if (reg_params[i].direction == PARAM_OUT || reg_params[i].direction == PARAM_IN_OUT ) 
+		{
+			LOG_DEBUG("restore %s", reg_params[i].reg_name);
+			struct reg *r = register_get_by_name(target->reg_cache, reg_params[i].reg_name, 0);
+			buf_set_u64(buf, 0, info->xlen[0], saved_regs[r->number]);
+			if (r->type->set(r, buf) != ERROR_OK)
+				return ERROR_FAIL;
+		}
 	}
 
 	return ERROR_OK;

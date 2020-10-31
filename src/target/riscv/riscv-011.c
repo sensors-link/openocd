@@ -2309,6 +2309,7 @@ static int arch_state(struct target *target)
 int riscv_try_write_memory(struct target *target, target_addr_t address,
 							 uint32_t size, uint32_t count, const uint8_t *buffer)
 {
+	riscv011_info_t *info = get_info(target);
 	jtag_add_ir_scan(target->tap, &select_dbus, TAP_IDLE);
 
 	/* Set up the address. */
@@ -2325,7 +2326,7 @@ int riscv_try_write_memory(struct target *target, target_addr_t address,
 	if (setup_write_memory(target, size) != ERROR_OK)
 		return ERROR_FAIL;
 
-	scans_t *scans = scans_new(target, 2);
+	scans_t *scans = scans_new(target, 256);
 
 	scans_reset(scans);
 
@@ -2357,6 +2358,7 @@ int riscv_try_write_memory(struct target *target, target_addr_t address,
 	}
 
 	scans_add_write32(scans, 4, value, true);
+	scans_add_read32(scans, info->dramsize-1, false);
 
 	int retval = scans_execute(scans);
 	if (retval != ERROR_OK)
@@ -2365,6 +2367,10 @@ int riscv_try_write_memory(struct target *target, target_addr_t address,
 		goto error;
 	}
 
+	wait_for_debugint_clear(target, false);
+	cache_clean(target);
+	write_gpr(target, T0, address);
+	
 	scans_delete(scans);
 	cache_clean(target);
 	return register_write(target, T0, t0);
