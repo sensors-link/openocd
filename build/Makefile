@@ -77,7 +77,9 @@ $(SYSROOT)/bin/libjaylink-0.dll: openocd-0.10.0.zip
 $(SYSROOT)/bin/openocd.exe:	
 	cd .. && SKIP_SUBMODULE=1 ./bootstrap
 	mkdir -p build
-	cd build && CFLAGS=-I$(SYSROOT)/include ../../configure --host=x86_64-w64-mingw32 --prefix=$(SYSROOT) --disable-internal-jimtcl --disable-internal-libjaylink \
+	cd build && \
+	  PKG_CONFIG=x86_64-w64-mingw32-pkg-config PKG_CONFIG_PATH=$(SYSROOT)/lib/pkgconfig PKG_CONFIG_LIBDIR=$(SYSROOT)/lib/pkgconfig \
+	  CFLAGS=-I$(SYSROOT)/include ../../configure --host=x86_64-w64-mingw32 --prefix=$(SYSROOT) --disable-internal-jimtcl --disable-internal-libjaylink \
 		--enable-jlink=no --disable-doxygen-html --enable-doxygen-pdf=no --enable-rshim=no --enable-stlink=no \
 		--enable-ti-icdi=no --enable-ulink=no --enable-usb-blaster-2=no --enable-vsllink=no --enable-xds110=no \
 		--enable-osbdm=no --enable-opendous=no --enable-aice=no --enable-usbprog=no --enable-rlink=no --enable-kitprog=no \
@@ -85,7 +87,9 @@ $(SYSROOT)/bin/openocd.exe:
 		--enable-bcm2835gpio=no --enable-imx_gpio=no --enable-ep93xx=no --enable-at91rm9200=no \
 		--enable-gw16012=no  --enable-buspirate=no --enable-sysfsgpio=no --enable-xlnx-pcie-xvc=no \
 		--enable-branding='S-Link Phoenix SDF'
-	cd build && make -j4 && make install
+	cd build && \
+	  PKG_CONFIG=x86_64-w64-mingw32-pkg-config PKG_CONFIG_PATH=$(SYSROOT)/lib/pkgconfig PKG_CONFIG_LIBDIR=$(SYSROOT)/lib/pkgconfig \
+	  make -j4 && make install
 
 $(SYSROOT)/openocd.zip: $(SYSROOT)/bin/libusb-1.0.dll $(SYSROOT)/bin/libusb-0-1-4.dll $(SYSROOT)/bin/libftdi1.dll $(SYSROOT)/bin/jimsh.exe $(SYSROOT)/bin/openocd.exe
 	cd $(SYSROOT) && zip -r openocd.zip bin/lib* bin/openocd.exe share/info share/man share/openocd
